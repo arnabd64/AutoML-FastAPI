@@ -7,18 +7,10 @@ class ArtifactPaths(enum.Enum):
     MODEL = "./artifacts/{token}-model.pickle"
     EVALUATION = "./artifacts/{token}-evaluation.json"
     TRAINING_ARGS = "./artifacts/{token}-training_args.json"
+    STATUS = "./artifacts/{token}-status.json"
 
 
 class Task(enum.Enum):
 
     REGRESSION = 'regression'
     CLASSIFICATION = 'classification'
-
-
-class Iterations(enum.Enum):
-    """
-    Enum class for the number of iterations
-    """
-    LOW = 15
-    MEDIUM = 30
-    HIGH = 60

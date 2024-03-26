@@ -1,9 +1,13 @@
-from fastapi import FastAPI, Depends, BackgroundTasks
-from fastapi.responses import JSONResponse, PlainTextResponse
-from backend import utils
-from typing import Dict, Any
 import secrets
+from typing import Annotated, Any, Dict
 
+from fastapi import Depends, FastAPI, status
+from fastapi.background import BackgroundTasks
+from fastapi.exceptions import HTTPException
+from fastapi.responses import JSONResponse, PlainTextResponse
+
+from backend import utils
+from backend.status_handler import StatusHandler
 
 server = FastAPI(on_startup=[utils.startup_event],
                  default_response_class=PlainTextResponse)
@@ -32,10 +36,13 @@ async def start_training(background: BackgroundTasks,
 
 
 @server.get("/check-status/{token}", response_class=JSONResponse)
-async def check_status(token: str):
-    return {"status": "completed"}
+async def check_status(status_history: Annotated[StatusHandler, Depends()]):
+    content = status_history.read_status()
+    if content is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No status found", {"X-Token": status_history.token})
+    return content
 
 
 @server.get("/evaluate-model/{token}", response_class=JSONResponse)
-async def evaluate_model(token: str):
-    return {"accuracy": 0.95}
+async def evaluate_model(eval_dict: Annotated[Dict[str, float], Depends(utils.get_eval_results)]):
+    return eval_dict

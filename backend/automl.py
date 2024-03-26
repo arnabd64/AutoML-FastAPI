@@ -13,6 +13,7 @@ from sklearn.metrics import (
 )
 
 from backend.models import Task
+from backend.status_handler import StatusHandler
 
 
 def dataset_preprocess(df: pd.DataFrame):
@@ -33,17 +34,14 @@ def dataset_preprocess(df: pd.DataFrame):
     - pd.DataFrame: The preprocessed dataframe
     """
     for column, dtype in zip(df.columns, df.dtypes.values):
-        # Remove features that contain string values
         if dtype == 'object' and pd.unique(df[column]).size > 10:
             df.drop(column, axis=1, inplace=True)
             continue
         
         # Missing value treatment
         if dtype == 'object':
-            # fill missing values with the mode
             df[column] = df[column].fillna(df[column].mode()[0])
         else:
-            # fill missing values with the median
             df[column] = df[column].fillna(df[column].median())
 
         # Convert 'object' type to Categorical
@@ -69,41 +67,41 @@ def dataset_preprocess(df: pd.DataFrame):
 
 
 def trainer(dataframe: pd.DataFrame, training_args: Dict[str, Any]):
-    # init the model
-    model = AutoML()
+    # init status handler
+    status_handler = StatusHandler(training_args['token'])
 
-    # update the training args
+    model = AutoML()
     settings = dict(
         label = training_args['target'],
         task = training_args['task'],
         eval_method = 'cv',
         n_splits = 3,
         max_iter = training_args['iterations'],
-        estimator_list = ['lgbm', 'extra_trees', 'xgboost'],
+        # estimator_list = ['lgbm', 'extra_tree', 'xgboost'],
         n_jobs = int(os.getenv("THREADS", 4)),
         verbose = int(os.getenv("VERBOSE", 0)),
         seed = int(os.getenv("SEED", 42)),
         early_stop = True,
         sample = True
     )
+    status_handler.save_status("Starting training")
 
-    # train the model
-    model.fit(dataframe=dataframe, **settings)
+    try:
+        status_handler.save_status("Training in progress")
+        model.fit(dataframe=dataframe, **settings)
+    except:
+        status_handler.save_status("Training failed")
 
+    status_handler.save_status("Training completed")
     return model
 
 
 def evaluate_model(model: AutoML, dataframe: pd.DataFrame, training_args: Dict[str, Any]) -> Dict[str, float]:
-    # generate a sample for evaluations
     dataframe = dataframe.sample(frac=0.25, random_state=42)
-
-    # get y_true
     y_true = dataframe.loc[:, training_args['target']].values
-
-    # get y_pred
     y_pred = model.predict(dataframe.drop(columns=[training_args['target']]))
 
-    # get the evaluation results
+    StatusHandler(training_args['token']).save_status("Evaluation Started")
     if training_args['task'] == Task.REGRESSION:
         return {
         "r2_score": r2_score(y_true, y_pred),
