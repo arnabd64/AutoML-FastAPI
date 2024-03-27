@@ -1,24 +1,16 @@
 import json
 import os
-from typing import Annotated, Any, Dict
 from io import BytesIO
+from typing import Annotated, Any, Dict
 
 import pandas as pd
 from fastapi import Form, UploadFile, status
 from fastapi.exceptions import HTTPException
 
 from backend import automl
-from backend.status_handler import StatusHandler
+from backend.handlers import StatusHandler
 from backend.models import ArtifactPaths, Task
 
-
-def startup_event():
-    """
-    Create a directory for storing artifacts needed
-    by the Application
-    """
-    os.makedirs("./artifacts", exist_ok=True)
-    
 
 def dataset_upload_pipeline(token: str, csv: UploadFile):
     # verify if uploaded file is CSV
@@ -67,8 +59,23 @@ def train_model(training_args: Dict[str, Any]):
         json.dump(eval_results, eval_file)
     status_handler.save_status("Evaluation done successfully")
 
+    with open(ArtifactPaths.METADATA.value.format(token=token), "w") as fp:
+        metadata = dict(model=model.best_estimator, loss=model.best_loss, config=model.best_config)
+        json.dump(metadata, fp)
+    status_handler.save_status("Model Metadata saved")
+
     model.pickle(ArtifactPaths.MODEL.value.format(token=token))
     status_handler.save_status("Model saved successfully")
+
+def get_model_metadata(token: str) -> Dict[str, Any]:
+    filepath = ArtifactPaths.METADATA.value.format(token=token)
+    if not os.path.exists(filepath):
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            "Model metadat not yet saved",
+                            {"X-token": token})
+    
+    with open(filepath, "r") as fp:
+        return json.load(fp)
 
 
 def get_eval_results(token: str) -> Dict[str, float]:

@@ -12,8 +12,8 @@ from sklearn.metrics import (
     recall_score,
 )
 
+from backend.handlers import StatusHandler
 from backend.models import Task
-from backend.status_handler import StatusHandler
 
 
 def dataset_preprocess(df: pd.DataFrame):
@@ -77,20 +77,18 @@ def trainer(dataframe: pd.DataFrame, training_args: Dict[str, Any]):
         eval_method = 'cv',
         n_splits = 3,
         max_iter = training_args['iterations'],
-        # estimator_list = ['lgbm', 'extra_tree', 'xgboost'],
+        estimator_list = ['lgbm', 'extra_tree', 'xgboost'],
         n_jobs = int(os.getenv("THREADS", 4)),
         verbose = int(os.getenv("VERBOSE", 0)),
-        seed = int(os.getenv("SEED", 42)),
-        early_stop = True,
-        sample = True
+        seed = int(os.getenv("SEED", 42))
     )
     status_handler.save_status("Starting training")
 
     try:
         status_handler.save_status("Training in progress")
         model.fit(dataframe=dataframe, **settings)
-    except:
-        status_handler.save_status("Training failed")
+    except Exception as e:
+        status_handler.save_status("Training failed", "SUCCESS", {"error": str(e)})
 
     status_handler.save_status("Training completed")
     return model

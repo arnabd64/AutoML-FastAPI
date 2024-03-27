@@ -8,6 +8,7 @@ class ArtifactPaths(enum.Enum):
     EVALUATION = "./artifacts/{token}-evaluation.json"
     TRAINING_ARGS = "./artifacts/{token}-training_args.json"
     STATUS = "./artifacts/{token}-status.json"
+    METADATA = "./artifacts/{token}-metadata.json"
 
 
 class Task(enum.Enum):
