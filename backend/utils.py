@@ -1,28 +1,14 @@
 import json
 import os
-from io import BytesIO
 from typing import Annotated, Any, Dict
 
 import pandas as pd
-from fastapi import Form, UploadFile, status
+from fastapi import Form, status
 from fastapi.exceptions import HTTPException
 
 from backend import automl
 from backend.handlers import StatusHandler
 from backend.models import ArtifactPaths, Task
-
-
-def dataset_upload_pipeline(token: str, csv: UploadFile):
-    # verify if uploaded file is CSV
-    if not csv.filename.endswith('.csv'):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            "Only CSV files are allowed",
-                            {"X-Token": token})
-    
-    df = pd.read_csv(BytesIO(csv.file.read()))
-    df = automl.dataset_preprocess(df)
-    df.to_parquet(ArtifactPaths.DATASET.value.format(token=token), index=False)
-    StatusHandler(token).save_status("Dataset uploaded successfully")
 
 
 def save_training_args(token: str, 

@@ -12,11 +12,11 @@ from sklearn.metrics import (
     recall_score,
 )
 
-from backend.handlers import StatusHandler
+# from backend.handlers import StatusHandler
 from backend.models import Task
 
 
-def dataset_preprocess(df: pd.DataFrame):
+def preprocess(df: pd.DataFrame):
     """
     Preprocess the dataframe before training the model.
     The following preprocessing steps are performed:
@@ -66,12 +66,19 @@ def dataset_preprocess(df: pd.DataFrame):
     return df
 
 
-def trainer(dataframe: pd.DataFrame, training_args: Dict[str, Any]):
-    # init status handler
-    status_handler = StatusHandler(training_args['token'])
+def export_dataset(df: pd.DataFrame, export_path: str):
+    """
+    Export a dataframe to Parquet format
 
-    model = AutoML()
-    settings = dict(
+    Arguments:
+    - `df`: pd.DataFrame - The dataframe to be exported
+    - `export_path`: str - The path to save the exported dataframe
+    """
+    df.to_parquet(export_path, index=False)
+
+
+def settings(training_args: Dict[str, Any]):
+    return dict(
         label = training_args['target'],
         task = training_args['task'],
         eval_method = 'cv',
@@ -82,8 +89,10 @@ def trainer(dataframe: pd.DataFrame, training_args: Dict[str, Any]):
         verbose = int(os.getenv("VERBOSE", 0)),
         seed = int(os.getenv("SEED", 42))
     )
-    status_handler.save_status("Starting training")
 
+
+def trainer(dataframe: pd.DataFrame):
+    model = AutoML()
     try:
         status_handler.save_status("Training in progress")
         model.fit(dataframe=dataframe, **settings)
